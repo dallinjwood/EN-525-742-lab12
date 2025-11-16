@@ -57,12 +57,59 @@ TbClock <= not TbClock after 2.5ns; -- create a 200MHz clock for kicks, this clo
 psclk <= TbClock; -- this will be the board clock 125MHz
 
 stimuli : process
+  variable total_shift : time := 0 ns;
+  variable t_last_Unshifted : time := 0ns;
+  variable t_last_ADCCLK : time := 0ns;
+  variable TOL : time := 1ps;
+  variable psen_count : integer := 0;
 begin
+
+  -- Loop and shift until a full period of phase advances
+  while total_shift < 1000 us loop   -- 1s upper bound is only a safety net
+
+    ------------------------------------------------------------
+    -- Issue one dynamic phase-shift step
+    ------------------------------------------------------------
+    PSEN <= '1';
+    psen_count := psen_count + 1;       -- increment the counter
+    report "PSEN asserted " & integer'image(psen_count) & " times";
+
+    wait until rising_edge(psclk);
     PSEN <= '0';
-    wait for 10 us;
-    -- TODO : in here, write some code to create PSEN signals which will rotate the the ADC_CLK a full 360 degrees from 
-    -- its starting location.  Then stop rotating.
-    wait; 
+
+    -- Wait for MMCM to complete the shift
+    wait until PSDONE = '1';
+    wait until PSDONE = '0';
+
+    -- Wait for any clock edge
+    wait until rising_edge(Unshifted_clk);
+
+    -- Record the last rising edge times
+    if rising_edge(Unshifted_clk) then
+        t_last_Unshifted := now;
+    end if;
+
+    wait until rising_edge(ADCCLK);
+
+    if rising_edge(ADCCLK) then
+        t_last_ADCCLK := now;
+    end if;
+
+    report "current unshifted rising edge = " & time'image(t_last_Unshifted);
+    report "current ADC rising edge = " & time'image(t_last_ADCCLK);
+
+    -- Compare rising edge times
+    if abs(t_last_Unshifted - t_last_ADCCLK) <= TOL then
+        report "Rising edges occurred within 1 ps: " & time'image(now);
+        std.env.stop;
+    end if;
+
+    total_shift := now;
+
+  end loop;
+
+  report "Error: Did not complete 360-degree rotation before timeout.";
+  std.env.stop;
  end process;
 
 -- instantiate the ADC itself

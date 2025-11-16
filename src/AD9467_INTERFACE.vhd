@@ -64,6 +64,7 @@ component clk_wiz_0
 end component;
 
 signal O, Q1, Q2 : std_logic_vector (7 downto 0); 
+signal adc_data_sorted : std_logic_vector(15 downto 0);
 signal shifted_clk : std_logic;
 
 begin
@@ -111,8 +112,21 @@ gen_IDDR: for i in 0 to 7 generate
       );
  end generate;    
  
--- TODO!! This line is not correct, you need to figure out the appropriate mapping of the 8 different Q1 bits and the 8
--- different Q2 bits to make a 16 bit number.  Don't forget to invert the upper-most bit to take what was a number in 
--- "offset binary" and turn it into a signed number.  
-ADC_DATA <= Q1 & Q2;
+adc_data_sorted(15) <= Q1(7);
+adc_data_sorted(14) <= Q2(7);
+adc_data_sorted(13) <= Q1(6);
+adc_data_sorted(12) <= Q2(6);
+adc_data_sorted(11) <= Q1(5);
+adc_data_sorted(10) <= Q2(5);
+adc_data_sorted(9)  <= Q1(4);
+adc_data_sorted(8)  <= Q2(4);
+adc_data_sorted(7)  <= Q1(3);
+adc_data_sorted(6)  <= Q2(3);
+adc_data_sorted(5)  <= Q1(2);
+adc_data_sorted(4)  <= Q2(2);
+adc_data_sorted(3)  <= Q1(1);
+adc_data_sorted(2)  <= Q2(1);
+adc_data_sorted(1)  <= Q1(0);
+adc_data_sorted(0)  <= Q2(0);
+ADC_DATA <= (adc_data_sorted xor x"8000");
 end Behavioral;
